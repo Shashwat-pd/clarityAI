@@ -1,10 +1,37 @@
-version: '3.8'
 services:
-  interviewer:
-    build: .
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "7860:7860"
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://clarity:clarity@db:5432/clarityai
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ENVIRONMENT=development
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
     volumes:
-      - .:/app
-    env_file:
-      - .env
+      - .:/code
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: clarity
+      POSTGRES_PASSWORD: clarity
+      POSTGRES_DB: clarityai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clarity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

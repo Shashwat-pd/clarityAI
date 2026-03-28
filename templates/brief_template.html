@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #ffffff;
+            padding: 40px 50px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2c5282;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            font-size: 20pt;
+            color: #2c5282;
+            font-weight: 700;
+        }
+        .header .meta {
+            text-align: right;
+            font-size: 9pt;
+            color: #666;
+        }
+        .disclaimer {
+            background: #f7f7f7;
+            border-left: 3px solid #e2a72e;
+            padding: 10px 15px;
+            font-size: 8.5pt;
+            color: #555;
+            margin-bottom: 25px;
+            font-style: italic;
+        }
+        h2 {
+            font-size: 13pt;
+            color: #2c5282;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section p {
+            margin-bottom: 8px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat-box {
+            background: #f0f4f8;
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .stat-box .value {
+            font-size: 18pt;
+            font-weight: 700;
+            color: #2c5282;
+        }
+        .stat-box .label {
+            font-size: 8pt;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .crisis-banner {
+            background: #fed7d7;
+            border: 1px solid #fc8181;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #c53030;
+        }
+        ul {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        .footer {
+            margin-top: 40px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            font-size: 8pt;
+            color: #999;
+            text-align: center;
+        }
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ClarityAI — Counsellor Brief</h1>
+        <div class="meta">
+            Generated: {{ brief.generated_at.strftime('%d %B %Y') if brief.generated_at else 'N/A' }}<br>
+            Student ID: {{ brief.student_id | string | truncate(8, True, '') }}<br>
+            Sessions: {{ brief.session_count or 0 }}
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        This document is generated from behavioural observations and is intended as an input
+        to counsellor judgment, not a clinical assessment or diagnosis.
+    </div>
+
+    {% if brief.crisis_flagged %}
+    <div class="crisis-banner">
+        ATTENTION: Crisis-level language was detected during one or more sessions in this period.
+        Please review the relevant session transcripts.
+    </div>
+    {% endif %}
+
+    {% if brief.content.behavioural_signals and brief.content.behavioural_signals is mapping %}
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="value">{{ brief.content.behavioural_signals.avg_clarity or '—' }}</div>
+            <div class="label">Avg Clarity Score</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ brief.content.behavioural_signals.total_readings or '—' }}</div>
+            <div class="label">Total Readings</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ brief.content.behavioural_signals.trend or '—' }}</div>
+            <div class="label">Trend</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <h2>Session Overview</h2>
+        <p>{{ brief.content.session_overview or 'No overview available.' }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Core Concerns</h2>
+        <p>{{ brief.content.core_concerns or 'No concerns identified.' }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Behavioural Signals</h2>
+        {% if brief.content.behavioural_signals and brief.content.behavioural_signals is mapping %}
+        <p>Average clarity: {{ brief.content.behavioural_signals.avg_clarity or 'N/A' }},
+           Range: {{ brief.content.behavioural_signals.min_clarity or 'N/A' }} – {{ brief.content.behavioural_signals.max_clarity or 'N/A' }},
+           Trend: {{ brief.content.behavioural_signals.trend or 'N/A' }}</p>
+        {% else %}
+        <p>{{ brief.content.behavioural_signals or 'No signal data available.' }}</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Trajectory</h2>
+        <p>{{ brief.content.trajectory or 'No trajectory data available.' }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Suggested Focus Areas</h2>
+        <p>{{ brief.content.suggested_focus_areas or 'No focus areas identified.' }}</p>
+    </div>
+
+    <div class="footer">
+        ClarityAI — Confidential — Cognitive-Adaptive Career Guidance Platform<br>
+        This document is auto-generated and must not be used as a standalone clinical instrument.
+    </div>
+</body>
+</html>

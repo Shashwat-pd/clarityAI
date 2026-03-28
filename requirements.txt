@@ -1,7 +1,20 @@
-gradio>=5,<6
-httpx>=0.28,<1
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+sqlalchemy[asyncio]==2.0.30
+asyncpg==0.29.0
+alembic==1.13.0
+pydantic==2.7.0
+pydantic-settings==2.3.0
+
+# AI / Voice
+google-genai==1.5.0
+deepgram-sdk==3.4.0
+
+# PDF
+weasyprint==62.3
+jinja2==3.1.4
+
+# Utilities
+python-multipart==0.0.9
+httpx>=0.28.1
 python-dotenv==1.0.1
-setuptools<81
-wheel>=0.45
-google-genai>=1.0.0
-requests>=2.31,<3
