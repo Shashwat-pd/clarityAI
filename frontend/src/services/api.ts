@@ -28,12 +28,21 @@ export const ApiService = {
     const formData = new FormData();
     formData.append('session_id', sessionId);
 
-    // @ts-ignore - React Native FormData typing
-    formData.append('audio', {
-      uri: audioUri,
-      type: 'audio/webm',
-      name: 'recording.webm',
-    });
+    // Handle web vs native differently
+    if (audioUri.startsWith('blob:') || audioUri.startsWith('http')) {
+      // Web: fetch the blob and append it
+      const response = await fetch(audioUri);
+      const blob = await response.blob();
+      formData.append('audio', blob, 'recording.webm');
+    } else {
+      // React Native: use the URI format
+      // @ts-ignore - React Native FormData typing
+      formData.append('audio', {
+        uri: audioUri,
+        type: 'audio/webm',
+        name: 'recording.webm',
+      });
+    }
 
     const response = await api.post<VoiceTurnResponse>('/voice/turn', formData, {
       headers: {

@@ -19,7 +19,7 @@ export interface VoiceTurnResponse {
   turn_id: string;
   session_id: string;
   transcript: string;
-  ai_response_text: string;
+  ai_text: string;
   audio_url?: string;
   audio_bytes?: string;
   clarity_score: number;

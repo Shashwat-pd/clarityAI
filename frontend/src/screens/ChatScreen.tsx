@@ -60,7 +60,7 @@ export const ChatScreen: React.FC = () => {
         {
           id: response.turn_id,
           role: 'assistant',
-          content: response.ai_response_text,
+          content: response.ai_text,
           timestamp: new Date().toISOString(),
         },
       ]);
