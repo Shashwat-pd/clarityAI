@@ -11,6 +11,8 @@ except ImportError:  # pragma: no cover - handled at runtime when dependency is 
     genai = None
     types = None
 
+logger = logging.getLogger(__name__)
+
 
 class PromptManager:
     def __init__(self, prompts: Dict[str, str]):
@@ -94,6 +96,13 @@ class LLMManager:
 
         self.status = self.test_llm(stream=False)
         self.streaming = self.test_llm(stream=True) if self.status else False
+        logger.info(
+            "LLMManager initialized llm_type=%s model=%s status=%s streaming=%s",
+            self.llm_type,
+            self.config.llm.name,
+            self.status,
+            self.streaming,
+        )
 
     def get_text(self, messages: List[Dict[str, str]], stream: Optional[bool] = None) -> Generator[str, None, None]:
         """
@@ -111,9 +120,11 @@ class LLMManager:
         """
         if stream is None:
             stream = self.streaming
+        logger.info("LLM get_text called stream=%s messages=%s", stream, len(messages))
         try:
             yield from self._get_text_gemini(messages, stream)
         except Exception as e:
+            logger.exception("LLM get_text failed")
             raise APIError(f"LLM Get Text Error: Unexpected error: {e}")
 
     def _get_text_gemini(self, messages: List[Dict[str, str]], stream: bool) -> Generator[str, None, None]:
@@ -128,6 +139,12 @@ class LLMManager:
             str: Generated text chunks.
         """
         system_instruction, contents = self._prepare_gemini_messages(messages)
+        logger.info(
+            "LLM _get_text_gemini stream=%s system_instruction_len=%s contents=%s",
+            stream,
+            len(system_instruction or ""),
+            len(contents),
+        )
         config = types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=1,
@@ -140,6 +157,7 @@ class LLMManager:
                 contents=contents,
                 config=config,
             )
+            logger.info("LLM non-stream response received")
             yield self._extract_gemini_text(response).strip()
         else:
             response = self.client.models.generate_content_stream(
@@ -150,6 +168,7 @@ class LLMManager:
             for chunk in response:
                 text = self._extract_gemini_text(chunk)
                 if text:
+                    logger.info("LLM stream chunk len=%s", len(text))
                     yield text
 
     def _prepare_gemini_messages(self, messages: List[Dict[str, str]]) -> Tuple[Optional[str], List[Any]]:
@@ -215,6 +234,7 @@ class LLMManager:
         Returns:
             bool: True if the test is successful, False otherwise.
         """
+        logger.info("LLM test_llm stream=%s", stream)
         try:
             test_messages = [
                 {"role": "system", "content": "You just help me test the connection."},
@@ -222,6 +242,7 @@ class LLMManager:
                 {"role": "user", "content": "Ping!"},
             ]
             list(self.get_text(test_messages, stream=stream))
+            logger.info("LLM test_llm succeeded stream=%s", stream)
             return True
         except APIError as e:
             logging.error(f"LLM test failed: {e}")
@@ -257,6 +278,13 @@ class LLMManager:
         Returns:
             List[Dict[str, str]]: Prepared messages for problem generation.
         """
+        logger.info(
+            "LLM get_problem_prepare_messages interview_type=%s difficulty=%s topic=%s requirements_len=%s",
+            interview_type,
+            difficulty,
+            topic,
+            len(requirements or ""),
+        )
         system_prompt = self.prompt_manager.get_system_prompt(f"{interview_type}_problem_generation_prompt")
         full_prompt = self.prompt_manager.get_problem_requirements_prompt(interview_type, difficulty, topic, requirements)
         return [
@@ -277,11 +305,14 @@ class LLMManager:
         Yields:
             str: Incrementally generated problem statement.
         """
+        logger.info("LLM get_problem started interview_type=%s", interview_type)
         messages = self.get_problem_prepare_messages(requirements, difficulty, topic, interview_type)
         problem = ""
         for text in self.get_text(messages):
             problem += text
+            logger.info("LLM get_problem accumulated_len=%s", len(problem))
             yield problem
+        logger.info("LLM get_problem completed final_len=%s", len(problem))
 
     def update_chat_history(
         self, code: str, previous_code: str, chat_history: List[Dict[str, str]], chat_display: List[List[Optional[str]]]

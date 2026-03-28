@@ -1,4 +1,5 @@
 import gradio as gr
+import logging
 import numpy as np
 import os
 import time
@@ -14,6 +15,8 @@ from api.audio import TTSManager, STTManager
 DEMO_MESSAGE: str = """<span style="color: red;"> 
 This service is running in demo mode with limited performance (e.g. slow voice recognition). For a better experience, run the service locally, refer to the Instruction tab for more details.
 </span>"""
+
+logger = logging.getLogger(__name__)
 
 
 def send_request(
@@ -42,6 +45,13 @@ def send_request(
     """
 
     # TODO: Find the way to simplify it and remove duplication in logic
+    logger.info(
+        "send_request called: code_len=%s previous_code_len=%s chat_history_len=%s chat_display_len=%s",
+        len(code or ""),
+        len(previous_code or ""),
+        len(chat_history or []),
+        len(chat_display or []),
+    )
 
     if silent is None:
         silent = os.getenv("SILENT", False)
@@ -51,6 +61,7 @@ def send_request(
         return
 
     chat_history = llm.update_chat_history(code, previous_code, chat_history, chat_display)
+    logger.info("send_request updated chat_history_len=%s", len(chat_history))
     original_len = len(chat_display)
     chat_display.append([None, ""])
 
@@ -108,6 +119,7 @@ def send_request(
     if chat_display and len(chat_display) > 1 and chat_display[-1][1] == "" and chat_display[-2][1]:
         chat_display.pop()
         yield chat_history, chat_display, code, b""
+    logger.info("send_request completed")
 
 
 def change_code_area(interview_type: str) -> gr.update:
@@ -155,6 +167,113 @@ def get_problem_solving_ui(
     """
     send_request_partial = partial(send_request, llm=llm, tts=tts)
     play_last_message = tts.read_last_message if os.environ.get("DEBUG", False) else (lambda _chat: None)
+
+    def log_stage(stage: str):
+        logger.info("generate_button stage=%s", stage)
+
+    def start_timer():
+        logger.info("generate_button stage=start_timer")
+        return time.time()
+
+    def get_duration_string(start_time):
+        logger.info("generate_button stage=get_duration_string start_time=%s", start_time)
+        if start_time is None:
+            duration_str = ""
+        else:
+            duration = int(time.time() - start_time)
+            minutes, seconds = divmod(duration, 60)
+            duration_str = f"Interview duration: {minutes} minutes, {seconds} seconds"
+        return duration_str
+
+    def log_and_add_interviewer_start(chat):
+        logger.info("generate_button stage=add_start_message chat_is_none=%s", chat is None)
+        return add_interviewer_message(fixed_messages["start"])(chat)
+
+    def log_play_last_message(chat):
+        logger.info("generate_button stage=play_last_message debug_enabled=%s", bool(os.environ.get("DEBUG", False)))
+        return play_last_message(chat)
+
+    def hide_initial_controls():
+        logger.info("generate_button stage=hide_initial_controls")
+        return (
+            gr.update(visible=False),
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+            gr.update(interactive=False),
+            gr.update(visible=False),
+        )
+
+    def show_problem_section():
+        logger.info("generate_button stage=show_problem_section")
+        return gr.update(visible=True)
+
+    def generate_problem_with_logging(requirements, difficulty, topic, interview_type):
+        logger.info(
+            "generate_button stage=generate_problem interview_type=%s difficulty=%s topic=%s requirements_len=%s",
+            interview_type,
+            difficulty,
+            topic,
+            len(requirements or ""),
+        )
+        for text in llm.get_problem(requirements, difficulty, topic, interview_type):
+            logger.info("generate_button stage=generate_problem_chunk current_len=%s", len(text or ""))
+            yield text
+        logger.info("generate_button stage=generate_problem_done")
+
+    def init_bot_with_logging(description, interview_type):
+        logger.info(
+            "generate_button stage=init_bot interview_type=%s description_len=%s",
+            interview_type,
+            len(description or ""),
+        )
+        return llm.init_bot(description, interview_type)
+
+    def show_solution_section():
+        logger.info("generate_button stage=show_solution_section")
+        return (gr.update(visible=True), gr.update(interactive=True), gr.update(interactive=True))
+
+    def log_transcription_started():
+        logger.info("audio_input stage=transcription_started")
+
+    def log_transcription_finished():
+        logger.info("audio_input stage=transcription_finished")
+
+    def log_hidden_text(text):
+        logger.info("audio_input stage=hidden_text_updated text_len=%s", len(text or ""))
+        return text
+
+    def log_chat_after_stt(chat):
+        logger.info("audio_input stage=chat_updated_after_stt chat_len=%s", len(chat or []))
+        return chat
+
+    def transcribe_recorded_audio(audio, current_text):
+        if audio is None:
+            logger.info("audio_input stage=transcribe_recorded_audio audio_is_none=True")
+            return current_text
+
+        sample_rate, audio_data = audio
+        audio_len = 0 if audio_data is None else len(audio_data)
+        logger.info(
+            "audio_input stage=transcribe_recorded_audio sample_rate=%s audio_len=%s existing_text_len=%s",
+            sample_rate,
+            audio_len,
+            len(current_text or ""),
+        )
+        if audio_len == 0:
+            return current_text
+        return stt.transcribe_audio(audio_data, current_text, sample_rate=sample_rate)
+
+    def hide_audio_input():
+        logger.info("audio_input stage=stop_recording_hide_input")
+        return gr.update(visible=False)
+
+    def reset_hidden_text():
+        logger.info("audio_input stage=reset_hidden_text")
+        return ""
+
+    def show_audio_input():
+        logger.info("audio_input stage=show_audio_input")
+        return gr.update(visible=True)
 
     with gr.Tab("Interview", render=False, elem_id=f"tab") as problem_tab:
         if os.getenv("IS_DEMO"):
@@ -240,49 +359,28 @@ def get_problem_solving_ui(
                     chat = gr.Chatbot(label="Chat", show_label=False, show_share_button=False, elem_id=f"chat", value=[])
 
                     audio_input = gr.Audio(interactive=False, **default_audio_params, elem_id=f"audio_input")
-                    audio_buffer = gr.State(np.array([], dtype=np.int16))
-                    audio_to_transcribe = gr.State(np.array([], dtype=np.int16))
 
         with gr.Accordion("Feedback", open=True, visible=False) as feedback_acc:
             interview_time = gr.Markdown()
             feedback = gr.Markdown(elem_id=f"feedback", line_breaks=True)
 
-        # Event handlers
-        def start_timer():
-            return time.time()
-
-        def get_duration_string(start_time):
-            if start_time is None:
-                duration_str = ""
-            else:
-                duration = int(time.time() - start_time)
-                minutes, seconds = divmod(duration, 60)
-                duration_str = f"Interview duration: {minutes} minutes, {seconds} seconds"
-            return duration_str
-
         start_btn.click(fn=start_timer, outputs=[start_time]).success(
-            fn=add_interviewer_message(fixed_messages["start"]), inputs=[chat], outputs=[chat]
-        ).success(fn=play_last_message, inputs=[chat], outputs=[audio_output]).success(
-            fn=lambda: (
-                gr.update(visible=False),
-                gr.update(interactive=False),
-                gr.update(interactive=False),
-                gr.update(interactive=False),
-                gr.update(visible=False),
-            ),
+            fn=log_and_add_interviewer_start, inputs=[chat], outputs=[chat]
+        ).success(fn=log_play_last_message, inputs=[chat], outputs=[audio_output]).success(
+            fn=hide_initial_controls,
             outputs=[init_acc, start_btn, terms_checkbox, interview_type_select, hi_markdown],
         ).success(
-            fn=lambda: (gr.update(visible=True)),
+            fn=show_problem_section,
             outputs=[problem_acc],
         ).success(
-            fn=llm.get_problem,
+            fn=generate_problem_with_logging,
             inputs=[requirements, difficulty_select, topic_select, interview_type_select],
             outputs=[description],
             scroll_to_output=True,
         ).success(
-            fn=llm.init_bot, inputs=[description, interview_type_select], outputs=[chat_history]
+            fn=init_bot_with_logging, inputs=[description, interview_type_select], outputs=[chat_history]
         ).success(
-            fn=lambda: (gr.update(visible=True), gr.update(interactive=True), gr.update(interactive=True)),
+            fn=show_solution_section,
             outputs=[solution_acc, end_btn, audio_input],
         )
 
@@ -308,37 +406,27 @@ def get_problem_solving_ui(
         )
 
         hidden_text = gr.State("")
-        is_transcribing = gr.State(False)
 
-        audio_input.stream(
-            stt.process_audio_chunk,
-            inputs=[audio_input, audio_buffer],
-            outputs=[audio_buffer, audio_to_transcribe],
-        ).success(fn=lambda: True, outputs=[is_transcribing]).success(
-            fn=stt.transcribe_audio, inputs=[audio_to_transcribe, hidden_text], outputs=[hidden_text]
+        stop_audio_recording = audio_input.stop_recording(fn=hide_audio_input, outputs=[audio_input])
+        stop_audio_recording.success(
+            fn=log_transcription_started
+        ).success(
+            fn=transcribe_recorded_audio, inputs=[audio_input, hidden_text], outputs=[hidden_text]
+        ).success(
+            fn=log_hidden_text, inputs=[hidden_text], outputs=[hidden_text]
         ).success(
             fn=stt.add_to_chat, inputs=[hidden_text, chat], outputs=[chat]
         ).success(
-            fn=lambda: False, outputs=[is_transcribing]
-        )
-
-        # We need to wait until the last chunk of audio is transcribed before sending the request
-        # I didn't find a native way of gradio to handle this, and used a workaround
-        WAIT_TIME = 3
-        TIME_STEP = 0.3
-        STEPS = int(WAIT_TIME / TIME_STEP)
-
-        stop_audio_recording = audio_input.stop_recording(fn=lambda: gr.update(visible=False), outputs=[audio_input])
-        for _ in range(STEPS):
-            stop_audio_recording = stop_audio_recording.success(fn=lambda x: time.sleep(TIME_STEP) if x else None, inputs=[is_transcribing])
-
-        stop_audio_recording.success(
+            fn=log_chat_after_stt, inputs=[chat], outputs=[chat]
+        ).success(
+            fn=log_transcription_finished
+        ).success(
             fn=send_request_partial,
             inputs=[code, previous_code, chat_history, chat],
             outputs=[chat_history, chat, previous_code, audio_output],
             show_progress="full",
-        ).then(fn=lambda: (np.array([], dtype=np.int16), "", False), outputs=[audio_buffer, hidden_text, is_transcribing]).then(
-            fn=lambda: gr.update(visible=True), outputs=[audio_input]
+        ).then(fn=reset_hidden_text, outputs=[hidden_text]).then(
+            fn=show_audio_input, outputs=[audio_input]
         )
 
         interview_type_select.change(
