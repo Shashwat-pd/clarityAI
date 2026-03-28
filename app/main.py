@@ -16,16 +16,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS middleware for frontend access
+# CORS middleware — allow all origins during development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8081",  # Expo web dev server
-        "http://localhost:19006",  # Alternative Expo port
-        "http://127.0.0.1:8081",
-        "http://127.0.0.1:19006",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
