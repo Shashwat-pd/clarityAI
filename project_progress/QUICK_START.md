@@ -1,10 +1,15 @@
-# ClarityAI Backend - Quick Start Guide
+# ClarityAI - Quick Start Guide
 
 ## Prerequisites
 
+**Backend:**
 - Docker & Docker Compose installed
 - Gemini API key: https://aistudio.google.com/apikey
 - Deepgram API key: https://console.deepgram.com
+
+**Frontend (Phase 2):**
+- Node.js 18+ and npm
+- Expo CLI: `npm install -g expo-cli`
 
 ## Setup (30 seconds)
 
@@ -103,9 +108,60 @@ app/
 └── repositories/      # Data access
 ```
 
+## Phase 2: Running the Frontend
+
+### Setup (1 minute)
+
+```bash
+# 1. Install dependencies
+cd frontend
+npm install
+
+# 2. Start the frontend (web)
+npm run web
+
+# Or for mobile:
+npm run ios       # iOS simulator (Mac only)
+npm run android   # Android emulator
+```
+
+### Full Stack Test
+
+**Terminal 1 - Backend:**
+```bash
+docker compose up
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run web
+```
+
+Then open http://localhost:8081 in your browser and:
+1. Click "🎤 Speak" to record a voice message
+2. Or type a message in the text input at the bottom
+3. Watch the AI respond with voice + text
+
+### Frontend Structure
+
+```
+frontend/
+├── src/
+│   ├── components/       # UI components
+│   ├── hooks/            # React hooks
+│   ├── screens/          # App screens
+│   ├── services/         # API client
+│   └── types/            # TypeScript types
+└── App.tsx               # Entry point
+```
+
 ## Next Steps
 
-1. Test all endpoints via Swagger UI: http://localhost:8000/docs
-2. Read PRD: `ClarityAI_PRD.md`
-3. Check detailed status: `project_progress/PHASE_1_STATUS.md`
-4. Build React Native frontend (Phase 2)
+1. **Backend:** Test all endpoints via Swagger UI at http://localhost:8000/docs
+2. **Frontend:** Launch the web app with `cd frontend && npm run web`
+3. **Documentation:**
+   - Read PRD: `ClarityAI_PRD.md`
+   - Phase 1 Status: `project_progress/PHASE_1_STATUS.md`
+   - Phase 2 Status: `project_progress/PHASE_2_STATUS.md`
+4. **Phase 3:** Multi-session persistence, admin portal, WebSocket streaming
