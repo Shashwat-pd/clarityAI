@@ -2,16 +2,242 @@
 
 Cognitive-adaptive career guidance platform for students and school counsellors.
 
-This repository now contains the ClarityAI backend and frontend prototype, not the original mock interviewer project the repo started from.
+This repository contains the ClarityAI backend and frontend prototype. The system supports student conversations over text and voice, computes behavioural indicators, switches the LLM between guidance modes, and generates exportable counsellor briefs.
+
+## Setup
+
+This section is intentionally detailed. Follow it in order.
+
+### 1. Prerequisites
+
+Backend:
+
+- Python `3.11+` if running locally without Docker
+- Docker and Docker Compose if running the containerized stack
+- PostgreSQL is included in Docker Compose, so you do not need a separate local install if using Docker
+- Gemini API key
+- Deepgram API key
+
+Frontend:
+
+- Node.js `18+`
+- npm
+- Expo-compatible browser or simulator if you want to run the frontend
+
+### 2. Clone And Enter The Repo
+
+```bash
+git clone <your-repo-url>
+cd Interviewer
+```
+
+### 3. Create Environment File
+
+If `.env.example` exists, use it as the base. Otherwise create `.env` manually.
+
+Typical `.env` values:
+
+```env
+DATABASE_URL=postgresql+asyncpg://clarity:clarity@db:5432/clarityai
+GEMINI_API_KEY=your_gemini_key_here
+DEEPGRAM_API_KEY=your_deepgram_key_here
+ENVIRONMENT=development
+LOG_LEVEL=DEBUG
+MAX_SESSION_HISTORY_MESSAGES=20
+CRISIS_DETECTION_ENABLED=true
+DEFAULT_BRIEF_DAYS_BACK=30
+PDF_WATERMARK_TEXT=ClarityAI — Confidential
+```
+
+Important notes:
+
+- `LOG_LEVEL=DEBUG` is the current default and will produce very verbose terminal logs
+- in development this is useful because you can see every extraction and scoring step
+- this is not appropriate for production with real student data
+
+### 4. Run The Backend With Docker
+
+Recommended path:
+
+```bash
+docker compose up --build
+```
+
+What this should do:
+
+- build the backend image
+- start PostgreSQL
+- start the FastAPI service
+- make the API available locally
+
+Once it is up, open:
+
+```text
+http://localhost:8000/docs
+```
+
+Health check:
+
+```bash
+curl http://localhost:8000/api/v1/health
+```
+
+Expected shape:
+
+```json
+{
+  "status": "ok",
+  "db": "connected",
+  "version": "1.0.0"
+}
+```
+
+### 5. Run The Backend Without Docker
+
+If you prefer local Python execution:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+If you do this, your `DATABASE_URL` must point to a running PostgreSQL instance you control.
+
+### 6. Run The Frontend
+
+Install dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+Run web:
+
+```bash
+npm run web
+```
+
+Run iOS:
+
+```bash
+npm run ios
+```
+
+Run Android:
+
+```bash
+npm run android
+```
+
+Then return to the repo root when needed:
+
+```bash
+cd ..
+```
+
+### 7. Full Stack Development Flow
+
+Terminal 1:
+
+```bash
+docker compose up
+```
+
+Terminal 2:
+
+```bash
+cd frontend
+npm install
+npm run web
+```
+
+Backend API:
+
+```text
+http://localhost:8000/api/v1
+```
+
+Frontend web app:
+
+```text
+http://localhost:8081
+```
+
+### 8. Verify Core Flows
+
+#### Create a session
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"consent_given": true}'
+```
+
+#### Send a text message
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "YOUR_SESSION_ID",
+    "message": "I do not know what to study at university"
+  }'
+```
+
+#### Generate a brief
+
+```bash
+curl -X POST http://localhost:8000/api/v1/briefs/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "YOUR_STUDENT_ID",
+    "days_back": 30
+  }'
+```
+
+#### Export the DOCX brief
+
+```bash
+curl -L http://localhost:8000/api/v1/briefs/YOUR_BRIEF_ID/export --output counselor_brief.docx
+```
+
+### 9. Common Problems
+
+Backend does not start:
+
+- confirm `.env` exists
+- confirm Gemini and Deepgram keys are set
+- confirm port `8000` is free
+- confirm Docker is running if you use Compose
+
+Database connection errors:
+
+- confirm `DATABASE_URL` matches your chosen runtime mode
+- if using Docker, the default host is `db`, not `localhost`
+- try restarting with:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+Frontend cannot talk to backend:
+
+- confirm backend is available on `http://localhost:8000`
+- confirm frontend `app.json` or Expo config points at the same backend
+- confirm browser/device network access is not blocked
 
 ## What The System Does
 
-- Runs student conversations over text and voice
-- Infers behavioural and linguistic indicators from each turn
-- Computes a rolling `clarity_score`
-- Switches the LLM between `grounding`, `structuring`, and `guidance` modes
-- Aggregates multi-session behavioural data into a counsellor brief
-- Exports that brief as PDF and DOCX
+- runs student conversations over text and voice
+- infers behavioural and linguistic indicators from each turn
+- computes a rolling `clarity_score`
+- switches the LLM between `grounding`, `structuring`, and `guidance` modes
+- aggregates multi-session behavioural data into a counsellor brief
+- exports that brief as PDF and DOCX
 
 ## Current Signal Pipeline
 
@@ -273,7 +499,7 @@ metadata_score = clamp(metadata_score, 0.0, 1.0)
 
 ### 9. Raw Clarity Score
 
-Implemented in [cognitive_engine.py](/Users/shashwatpoudel/Documents/hack-clarity/Interviewer/app/services/cognitive_engine.py).
+Implemented in `app/services/cognitive_engine.py`.
 
 If keystroke data exists:
 
@@ -304,7 +530,7 @@ The current implementation uses up to the last 5 stored readings.
 
 ### 11. Mode Thresholds
 
-Implemented in [cognitive_engine.py](/Users/shashwatpoudel/Documents/hack-clarity/Interviewer/app/services/cognitive_engine.py).
+Implemented in `app/services/cognitive_engine.py`.
 
 ```text
 if smoothed_score < 0.34:
@@ -432,25 +658,6 @@ Default behaviour:
 - brief routes log export and preview activity
 
 This is intentionally noisy for development so you can see every small step in the signal pipeline.
-
-## Running The Backend
-
-```bash
-cp .env.example .env
-docker compose up --build
-```
-
-Health check:
-
-```bash
-curl http://localhost:8000/api/v1/health
-```
-
-Docs:
-
-```text
-http://localhost:8000/docs
-```
 
 ## Verification
 
