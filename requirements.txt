@@ -1,0 +1,7 @@
+gradio>=5,<6
+httpx>=0.28,<1
+python-dotenv==1.0.1
+setuptools<81
+wheel>=0.45
+google-genai>=1.0.0
+requests>=2.31,<3
