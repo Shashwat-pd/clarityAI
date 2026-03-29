@@ -72,7 +72,7 @@ export const ChatScreen: React.FC = () => {
 
       // Play audio response
       if (response.audio_url) {
-        setCurrentAudioUri(response.audio_url);
+        setCurrentAudioUri(ApiService.resolveAudioUrl(response.audio_url));
       } else if (response.audio_bytes) {
         // Base64 audio
         setCurrentAudioUri(`data:audio/mp3;base64,${response.audio_bytes}`);

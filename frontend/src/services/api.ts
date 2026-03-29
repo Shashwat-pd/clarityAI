@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { Session, VoiceTurnResponse, ChatMessageResponse, KeystrokeSignals } from '../types';
 
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000/api/v1';
+const API_BASE = API_URL.replace(/\/api\/v1$/, '');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -71,5 +72,11 @@ export const ApiService = {
   async checkHealth(): Promise<{ status: string; db: string; version: string }> {
     const response = await api.get('/health');
     return response.data;
+  },
+
+  // Resolve a backend-relative path (e.g. /api/v1/voice/audio/xxx) to a full URL
+  resolveAudioUrl(path: string): string {
+    if (path.startsWith('http')) return path;
+    return `${API_BASE}${path}`;
   },
 };
