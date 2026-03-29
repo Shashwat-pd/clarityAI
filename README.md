@@ -27,8 +27,7 @@ Frontend:
 ### 2. Clone And Enter The Repo
 
 ```bash
-git clone <your-repo-url>
-cd Interviewer
+git clone github.com/shashwat-pd/clarityAI
 ```
 
 ### 3. Create Environment File
