@@ -1,8 +1,10 @@
+import logging
 import re
 
 from app.models.schemas.common import TenseFeatures
 
 WORD_RE = re.compile(r"\b[\w']+\b")
+logger = logging.getLogger(__name__)
 
 FUTURE_PHRASES = [
     re.compile(r"\bwill\b", re.IGNORECASE),
@@ -65,6 +67,7 @@ def _safe_ratio(count: int, total: int) -> float:
 def extract_tense_features(message: str) -> TenseFeatures:
     text = message.strip()
     if not text:
+        logger.debug("extract_tense_features: empty message")
         return TenseFeatures()
 
     lowered = text.lower()
@@ -89,7 +92,7 @@ def extract_tense_features(message: str) -> TenseFeatures:
     else:
         explanation = "Tense markers were mixed or limited."
 
-    return TenseFeatures(
+    features = TenseFeatures(
         past_count=past_count,
         present_count=present_count,
         future_count=future_count,
@@ -99,6 +102,8 @@ def extract_tense_features(message: str) -> TenseFeatures:
         future_absent=future_absent,
         explanation=explanation,
     )
+    logger.debug("extract_tense_features: message=%r features=%s", message, features.model_dump())
+    return features
 
 
 def score_temporal_collapse(message: str, features: TenseFeatures) -> float:
@@ -116,4 +121,11 @@ def score_temporal_collapse(message: str, features: TenseFeatures) -> float:
     if features.future_ratio >= 0.25:
         distress -= 0.25
 
-    return max(0.0, min(1.0, round(distress, 3)))
+    score = max(0.0, min(1.0, round(distress, 3)))
+    logger.debug(
+        "score_temporal_collapse: message=%r score=%s features=%s",
+        message,
+        score,
+        features.model_dump(),
+    )
+    return score

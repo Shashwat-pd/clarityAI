@@ -39,6 +39,7 @@ class LinguisticClassifier:
         self.gemini = gemini
 
     async def classify(self, message: str, prior_user_messages: list[str] | None = None) -> LinguisticSignals:
+        logger.debug("classify: message=%r prior_user_messages=%s", message, prior_user_messages or [])
         tense_features = extract_tense_features(message)
         rumination_features = extract_rumination_features(message, prior_user_messages)
         valence_features = extract_valence_features(message)
@@ -47,7 +48,7 @@ class LinguisticClassifier:
         negative_valence = score_negative_valence(valence_features)
 
         if len(message.strip()) < 3:
-            return LinguisticSignals(
+            result = LinguisticSignals(
                 temporal_collapse=temporal_collapse,
                 rumination=rumination_score,
                 indicator_scores={
@@ -62,6 +63,8 @@ class LinguisticClassifier:
                 ),
                 summary=tense_features.explanation,
             )
+            logger.debug("classify: short-message result=%s", result.model_dump())
+            return result
 
         try:
             response = await self.gemini.classify(CLASSIFIER_PROMPT.format(message=message))
@@ -73,7 +76,7 @@ class LinguisticClassifier:
                     cleaned = cleaned[:-3]
                 cleaned = cleaned.strip()
             data = json.loads(cleaned)
-            return LinguisticSignals(
+            result = LinguisticSignals(
                 catastrophising=float(data.get("catastrophising", 0.0)),
                 rumination=rumination_score,
                 avoidance=float(data.get("avoidance", 0.0)),
@@ -92,9 +95,11 @@ class LinguisticClassifier:
                     valence=valence_features,
                 ),
             )
+            logger.debug("classify: llm_data=%s result=%s", data, result.model_dump())
+            return result
         except Exception as e:
             logger.warning(f"Linguistic classification failed: {e}")
-            return LinguisticSignals(
+            result = LinguisticSignals(
                 temporal_collapse=temporal_collapse,
                 rumination=rumination_score,
                 indicator_scores={
@@ -109,3 +114,5 @@ class LinguisticClassifier:
                 ),
                 summary=rumination_features.explanation or tense_features.explanation,
             )
+            logger.debug("classify: fallback result=%s", result.model_dump())
+            return result

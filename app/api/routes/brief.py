@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,6 +19,7 @@ from app.services.docx_service import DOCXService
 from app.services.pdf_service import PDFService
 
 router = APIRouter(prefix="/briefs", tags=["briefs"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/generate", response_model=BriefResponse)
@@ -25,6 +27,7 @@ async def generate_brief(
     request: BriefGenerateRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.debug("generate_brief: request=%s", request.model_dump())
     gemini = GeminiClient(settings.GEMINI_API_KEY)
     service = BriefService(
         gemini=gemini,
@@ -57,6 +60,7 @@ async def get_brief_pdf(
     brief_id: str,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.debug("get_brief_pdf: brief_id=%s", brief_id)
     result = await db.execute(select(Brief).where(Brief.id == uuid.UUID(brief_id)))
     brief = result.scalar_one_or_none()
     if not brief:
@@ -82,6 +86,7 @@ async def preview_brief(
     brief_id: str,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.debug("preview_brief: brief_id=%s", brief_id)
     result = await db.execute(select(Brief).where(Brief.id == uuid.UUID(brief_id)))
     brief = result.scalar_one_or_none()
     if not brief:
@@ -104,6 +109,7 @@ async def export_brief_docx(
     brief_id: str,
     db: AsyncSession = Depends(get_db),
 ):
+    logger.debug("export_brief_docx: brief_id=%s", brief_id)
     result = await db.execute(select(Brief).where(Brief.id == uuid.UUID(brief_id)))
     brief = result.scalar_one_or_none()
     if not brief:

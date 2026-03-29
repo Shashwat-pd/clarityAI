@@ -1,3 +1,4 @@
+import logging
 import re
 
 from app.models.schemas.common import ClarityMode, ClarityResult, LinguisticSignals
@@ -17,6 +18,8 @@ SIGNAL_REGISTRY = {
     "cognitive_narrowing": 0.10,
     "self_deprecation": 0.10,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class CognitiveEngine:
@@ -44,6 +47,18 @@ class CognitiveEngine:
         smoothed_score = sum(all_scores) / len(all_scores)
 
         mode = self._score_to_mode(smoothed_score)
+        logger.debug(
+            "compute: session_id=%s indicator_scores=%s keystroke_signals=%s session_metadata=%s linguistic_score=%s metadata_score=%s raw_score=%s smoothed_score=%s mode=%s",
+            session_id,
+            self._extract_indicator_scores(linguistic_signals),
+            keystroke_signals,
+            session_metadata,
+            linguistic_score,
+            metadata_score,
+            raw_score,
+            smoothed_score,
+            mode.value,
+        )
         await self.signal_repo.save_score(
             session_id,
             smoothed_score,

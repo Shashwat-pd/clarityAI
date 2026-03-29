@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # App
     ENVIRONMENT: str = "development"
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = "DEBUG"
     MAX_SESSION_HISTORY_MESSAGES: int = 20
     CRISIS_DETECTION_ENABLED: bool = True
 

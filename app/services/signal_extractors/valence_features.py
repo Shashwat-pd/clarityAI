@@ -1,8 +1,10 @@
+import logging
 import re
 
 from app.models.schemas.common import ValenceFeatures
 
 WORD_RE = re.compile(r"\b[a-z']+\b", re.IGNORECASE)
+logger = logging.getLogger(__name__)
 
 NEGATIVE_WORDS = {
     "afraid",
@@ -49,6 +51,7 @@ def extract_valence_features(message: str) -> ValenceFeatures:
     tokens = [token.lower() for token in WORD_RE.findall(message)]
     token_count = len(tokens)
     if token_count == 0:
+        logger.debug("extract_valence_features: empty token set message=%r", message)
         return ValenceFeatures(explanation="No lexical valence signal detected.")
 
     negative_word_count = sum(1 for token in tokens if token in NEGATIVE_WORDS)
@@ -64,7 +67,7 @@ def extract_valence_features(message: str) -> ValenceFeatures:
     else:
         explanation = "Positive and negative emotional language were balanced or absent."
 
-    return ValenceFeatures(
+    features = ValenceFeatures(
         negative_word_count=negative_word_count,
         positive_word_count=positive_word_count,
         negative_word_ratio=negative_word_ratio,
@@ -72,6 +75,8 @@ def extract_valence_features(message: str) -> ValenceFeatures:
         valence_balance=valence_balance,
         explanation=explanation,
     )
+    logger.debug("extract_valence_features: message=%r features=%s", message, features.model_dump())
+    return features
 
 
 def score_negative_valence(features: ValenceFeatures) -> float:
@@ -84,4 +89,6 @@ def score_negative_valence(features: ValenceFeatures) -> float:
         distress += min(0.25, max(0.0, features.valence_balance * 2))
     if features.positive_word_ratio >= 0.10:
         distress -= 0.15
-    return max(0.0, min(1.0, round(distress, 3)))
+    score = max(0.0, min(1.0, round(distress, 3)))
+    logger.debug("score_negative_valence: score=%s features=%s", score, features.model_dump())
+    return score

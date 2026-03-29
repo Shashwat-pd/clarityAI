@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import Counter
 
@@ -5,6 +6,7 @@ from app.models.schemas.common import RuminationFeatures
 
 WORD_RE = re.compile(r"\b[a-z']+\b", re.IGNORECASE)
 MIN_PHRASE_TOKENS = 2
+logger = logging.getLogger(__name__)
 
 STOPWORDS = {
     "a",
@@ -49,10 +51,12 @@ def extract_rumination_features(message: str, prior_user_messages: list[str] | N
     prior_user_messages = prior_user_messages or []
     current_tokens = _normalize_tokens(message)
     if len(current_tokens) < MIN_PHRASE_TOKENS:
+        logger.debug("extract_rumination_features: insufficient tokens message=%r", message)
         return RuminationFeatures(explanation="Not enough language to evaluate repetition patterns.")
 
     current_phrases = set(_extract_phrases(current_tokens, 2) + _extract_phrases(current_tokens, 3))
     if not current_phrases:
+        logger.debug("extract_rumination_features: insufficient phrases message=%r", message)
         return RuminationFeatures(explanation="Not enough language to evaluate repetition patterns.")
 
     history_phrase_counter: Counter[str] = Counter()
@@ -74,12 +78,19 @@ def extract_rumination_features(message: str, prior_user_messages: list[str] | N
     else:
         explanation = "No strong cross-turn phrase repetition was observed."
 
-    return RuminationFeatures(
+    features = RuminationFeatures(
         repeated_phrases=repeated_phrases,
         repetition_ratio=repetition_ratio,
         repeated_turn_count=repeated_turn_count,
         explanation=explanation,
     )
+    logger.debug(
+        "extract_rumination_features: message=%r prior_user_messages=%s features=%s",
+        message,
+        prior_user_messages,
+        features.model_dump(),
+    )
+    return features
 
 
 def score_rumination(features: RuminationFeatures) -> float:
@@ -92,4 +103,6 @@ def score_rumination(features: RuminationFeatures) -> float:
         distress += 0.20
     if len(features.repeated_phrases) >= 2:
         distress += 0.10
-    return max(0.0, min(1.0, round(distress, 3)))
+    score = max(0.0, min(1.0, round(distress, 3)))
+    logger.debug("score_rumination: score=%s features=%s", score, features.model_dump())
+    return score

@@ -5,10 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes import health, session, voice, chat, brief
+from app.config import settings
 from app.api.websocket.voice_ws import voice_websocket_handler
 from app.dependencies import get_db
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL.upper(), logging.DEBUG),
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    force=True,
+)
 
 app = FastAPI(
     title="ClarityAI",
