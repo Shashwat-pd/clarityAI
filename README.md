@@ -4,6 +4,10 @@ Cognitive-adaptive career guidance platform for students and school counsellors.
 
 This repository contains the ClarityAI backend and frontend prototype. The system supports student conversations over text and voice, computes behavioural indicators, switches the LLM between guidance modes, and generates exportable counsellor briefs.
 
+## Members
+Shashwat Poudyal - LLM Setup/ Inference from indicators
+Aarohan Niraula - Design, Web interface and Backend logic.
+
 ## Setup
 
 This section is intentionally detailed. Follow it in order.
