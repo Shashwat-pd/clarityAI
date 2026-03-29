@@ -89,6 +89,70 @@ async def voice_websocket_handler(websocket: WebSocket, session_id: str, db: Asy
 
                 crisis = CognitiveEngine.detect_crisis(transcript)
 
+                # Print the cognitive sauce to terminal for the demo
+                print(f"\n\033[1m\033[96m{'═' * 54}\033[0m")
+                print(f"\033[1m\033[96m  ◆  COGNITIVE ENGINE V2.1 — REAL-TIME ANALYSIS  ◆\033[0m")
+                print(f"\033[1m\033[96m{'═' * 54}\033[0m")
+                print(f"\033[1mINPUT TRANSCRIPT:\033[0m \033[97m\"{transcript}\"\033[0m")
+
+                # Deep matrix metrics
+                val = ling_signals.explainable_signals.valence
+                tns = ling_signals.explainable_signals.tense
+                rum = ling_signals.explainable_signals.rumination
+
+                print(f"\033[90m{'─' * 54}\033[0m")
+                print(f"\033[1m\033[95m► LINGUISTIC FEATURE EXTRACTION\033[0m")
+                print(f"  \033[95m[VALENCE]\033[0m    +Words: {val.positive_word_count} ({val.positive_word_ratio:.2f})  -Words: {val.negative_word_count} ({val.negative_word_ratio:.2f})  Balance: {val.valence_balance:+.2f}")
+                print(f"  \033[95m[TEMPORAL]\033[0m   Past: {tns.past_count} ({tns.past_ratio:.2f})  Present: {tns.present_count} ({tns.present_ratio:.2f})  Future: {tns.future_count} ({tns.future_ratio:.2f})  {'⚠ NO FUTURE' if tns.future_absent else '✓ Future present'}")
+                print(f"  \033[95m[RUMINATION]\033[0m Repeated turns: {rum.repeated_turn_count}  Ratio: {rum.repetition_ratio:.2f}  Phrases: {rum.repeated_phrases[:3] if rum.repeated_phrases else '—'}")
+
+                # All signals (rule-based + LLM)
+                print(f"\033[90m{'─' * 54}\033[0m")
+                print(f"\033[1m\033[93m► DETECTED COGNITIVE SIGNALS\033[0m")
+                all_signals = {
+                    "catastrophising": ling_signals.catastrophising,
+                    "rumination": ling_signals.rumination,
+                    "avoidance": ling_signals.avoidance,
+                    "temporal_collapse": ling_signals.temporal_collapse,
+                    "cognitive_narrowing": ling_signals.cognitive_narrowing,
+                    "self_deprecation": ling_signals.self_deprecation,
+                    "negative_valence": ling_signals.indicator_scores.get("negative_valence", 0.0),
+                }
+                for sig_name, sig_val in all_signals.items():
+                    if sig_val > 0:
+                        level = "🔴 HIGH" if sig_val >= 0.5 else ("🟡 MED" if sig_val >= 0.2 else "🟢 LOW")
+                        bar_len = int(sig_val * 20)
+                        bar = "\033[91m" + "█" * bar_len + "\033[0m" + "░" * (20 - bar_len)
+                        print(f"  {sig_name:<22} {sig_val:.2f}  {bar}  {level}")
+                active_count = sum(1 for v in all_signals.values() if v > 0)
+                if active_count == 0:
+                    print(f"  \033[92mBaseline stability — no distress signals detected\033[0m")
+
+                # Score + Mode (formula breakdown is printed by cognitive_engine)
+                score = clarity_result.score
+                if score > 0.6:
+                    color = "\033[92m"
+                    score_label = "GREEN"
+                elif score > 0.35:
+                    color = "\033[93m"
+                    score_label = "YELLOW"
+                else:
+                    color = "\033[91m"
+                    score_label = "RED"
+
+                mode_val = clarity_result.mode.value.upper()
+                if mode_val == "GROUNDING":
+                    mode_color = "\033[1m\033[41m\033[97m"
+                elif mode_val == "STRUCTURING":
+                    mode_color = "\033[1m\033[43m\033[30m"
+                else:
+                    mode_color = "\033[1m\033[42m\033[30m"
+
+                print(f"\033[90m{'─' * 54}\033[0m")
+                print(f"\033[1mCLARITY SCORE:\033[0m {color}{'█' * int(score * 20)}{'░' * (20 - int(score * 20))} {score:.3f} [{score_label}]\033[0m")
+                print(f"\033[1mMODE DIRECTIVE:\033[0m {mode_color} ► {mode_val} \033[0m")
+                print(f"\033[1m\033[96m{'═' * 54}\033[0m\n", flush=True)
+
                 # LLM
                 await websocket.send_json({"type": "ai_text_start"})
 

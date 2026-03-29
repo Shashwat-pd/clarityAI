@@ -81,6 +81,15 @@ export const ApiService = {
     return `${API_URL}/briefs/${briefId}/export`;
   },
 
+  resolveBriefPdfUrl(briefId: string): string {
+    return `${API_URL}/briefs/${briefId}/pdf`;
+  },
+
+  async previewBrief(briefId: string): Promise<BriefResponse> {
+    const response = await api.get<BriefResponse>(`/briefs/${briefId}/preview`);
+    return response.data;
+  },
+
   // Health Check
   async checkHealth(): Promise<{ status: string; db: string; version: string }> {
     const response = await api.get('/health');

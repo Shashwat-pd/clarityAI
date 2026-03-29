@@ -47,6 +47,33 @@ class CognitiveEngine:
         smoothed_score = sum(all_scores) / len(all_scores)
 
         mode = self._score_to_mode(smoothed_score)
+
+        # ── Formula breakdown for demo terminal ──
+        all_indicators = self._extract_indicator_scores(linguistic_signals)
+        weighted_parts = []
+        for sig_name, sig_val in all_indicators.items():
+            w = SIGNAL_REGISTRY.get(sig_name, 0.0)
+            if sig_val > 0:
+                weighted_parts.append((sig_name, sig_val, w, sig_val * w))
+        distress_total = sum(p[3] for p in weighted_parts)
+
+        print(f"\033[90m{'─' * 50}\033[0m")
+        print(f"\033[1m\033[95m► CLARITY FORMULA BREAKDOWN\033[0m")
+        for sig_name, sig_val, w, contrib in weighted_parts:
+            bar_len = int(contrib * 40)
+            bar = "\033[91m" + "█" * bar_len + "\033[0m" + "░" * (40 - bar_len)
+            print(f"  {sig_name:<22} {sig_val:.2f} × {w:.2f} = {contrib:.3f}  {bar}")
+        print(f"  \033[1mDistress Sum           = {distress_total:.3f}\033[0m")
+        print(f"  \033[1mLinguistic Score       = 1.0 - {distress_total:.3f} = {linguistic_score:.3f}\033[0m")
+        print(f"  \033[1mMetadata Score         = {metadata_score:.3f}\033[0m")
+        if keystroke_signals:
+            print(f"  \033[1mRaw = {linguistic_score:.3f}×0.50 + {keystroke_score:.3f}×0.30 + {metadata_score:.3f}×0.20 = {raw_score:.3f}\033[0m")
+        else:
+            print(f"  \033[1mRaw = {linguistic_score:.3f}×0.70 + {metadata_score:.3f}×0.30 = {raw_score:.3f}\033[0m")
+        if len(recent_scores) > 0:
+            print(f"  \033[1mSmoothing Window       = {[round(s, 3) for s in recent_scores]} + [{raw_score:.3f}]\033[0m")
+        print(f"  \033[1m\033[96mFinal Smoothed Score   = {smoothed_score:.3f}\033[0m")
+        print(f"\033[90m{'─' * 50}\033[0m", flush=True)
         logger.debug(
             "compute: session_id=%s indicator_scores=%s keystroke_signals=%s session_metadata=%s linguistic_score=%s metadata_score=%s raw_score=%s smoothed_score=%s mode=%s",
             session_id,

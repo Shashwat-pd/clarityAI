@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -58,6 +58,13 @@ export default function MascotZone({
 
   return (
     <Animated.View style={[styles.container, backgroundStyle]}>
+      {/* Brand wordmark - top center */}
+      <View style={styles.topCenter}>
+        <Text style={[styles.brandMark, { color: theme.colors.brandDeep, fontFamily: theme.fonts.heading }]}>
+          ClarityAI
+        </Text>
+      </View>
+
       {/* Session timer - top left */}
       <View style={styles.topLeft}>
         <SessionTimer startTime={sessionStartTime} />
@@ -75,6 +82,9 @@ export default function MascotZone({
           clarityMode={clarityMode}
           audioAmplitude={audioAmplitude}
         />
+        <Text style={[styles.lumiLabel, { color: theme.colors.brandDark, fontFamily: theme.fonts.body }]}>
+          Lumi
+        </Text>
       </View>
     </Animated.View>
   );
@@ -84,6 +94,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
+  },
+  topCenter: {
+    position: 'absolute',
+    top: 14,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  brandMark: {
+    fontSize: 13,
+    letterSpacing: 1.5,
+    opacity: 0.45,
+    textTransform: 'uppercase',
   },
   topLeft: {
     position: 'absolute',
@@ -101,5 +125,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  lumiLabel: {
+    fontSize: 12,
+    letterSpacing: 0.8,
+    opacity: 0.35,
+    marginTop: 4,
   },
 });

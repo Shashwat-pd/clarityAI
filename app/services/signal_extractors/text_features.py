@@ -55,6 +55,11 @@ PRESENT_DREAD_PATTERNS = [
     re.compile(r"\bfalling apart\b", re.IGNORECASE),
     re.compile(r"\boverwhelmed\b", re.IGNORECASE),
     re.compile(r"\bstuck\b", re.IGNORECASE),
+    re.compile(r"\bruined everything\b", re.IGNORECASE),
+    re.compile(r"\blife is over\b", re.IGNORECASE),
+    re.compile(r"\bcan't even\b", re.IGNORECASE),
+    re.compile(r"\bhiding\b", re.IGNORECASE),
+    re.compile(r"\bnot .* enough\b", re.IGNORECASE),
 ]
 
 
