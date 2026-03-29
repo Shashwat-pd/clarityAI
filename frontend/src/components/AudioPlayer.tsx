@@ -16,6 +16,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onPlaybackComplete,
 }) => {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const soundRef = React.useRef<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,11 +24,18 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   useEffect(() => {
     if (audioUri || audioBase64) {
       loadAndPlayAudio();
+    } else {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      setIsPlaying(false);
     }
 
     return () => {
-      if (sound) {
-        sound.unloadAsync();
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
     };
   }, [audioUri, audioBase64]);
@@ -38,8 +46,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       setError(null);
 
       // Unload previous sound if exists
-      if (sound) {
-        await sound.unloadAsync();
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
 
       // Set audio mode for playback
@@ -67,6 +76,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         onPlaybackStatusUpdate
       );
 
+      soundRef.current = newSound;
       setSound(newSound);
       setIsPlaying(autoPlay);
     } catch (err) {

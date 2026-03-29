@@ -1,8 +1,11 @@
+export type ClarityMode = 'grounding' | 'structuring' | 'guidance';
+export type LumiState = 'idle' | 'listening' | 'processing' | 'speaking' | 'grounding' | 'crisis';
+
 export interface Session {
   session_id: string;
   student_id: string;
   created_at: string;
-  current_clarity_mode: 'grounding' | 'structuring' | 'guidance';
+  current_clarity_mode: ClarityMode;
   current_clarity_score: number;
   crisis_flag_active: boolean;
   conversation_turn_count: number;
@@ -23,7 +26,7 @@ export interface VoiceTurnResponse {
   audio_url?: string;
   audio_bytes?: string;
   clarity_score: number;
-  clarity_mode: 'grounding' | 'structuring' | 'guidance';
+  clarity_mode: ClarityMode;
   crisis_flag: boolean;
 }
 
@@ -32,7 +35,7 @@ export interface ChatMessageResponse {
   session_id: string;
   ai_response: string;
   clarity_score: number;
-  clarity_mode: 'grounding' | 'structuring' | 'guidance';
+  clarity_mode: ClarityMode;
   crisis_flag: boolean;
 }
 
