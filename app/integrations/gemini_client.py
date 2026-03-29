@@ -13,7 +13,7 @@ RETRY_DELAY = 4
 class GeminiClient:
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.0-flash"
+        self.model_name = "gemini-2.5-flash-lite"
 
     async def _request_with_retry(self, func, *args, **kwargs):
         for attempt in range(MAX_RETRIES):
