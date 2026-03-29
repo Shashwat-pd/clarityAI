@@ -76,6 +76,18 @@ export interface ChatMessageResponse {
   explainable_signals: ExplainableSignals;
 }
 
+export interface BriefResponse {
+  brief_id: string;
+  student_id: string;
+  generated_at: string;
+  period_start?: string | null;
+  period_end?: string | null;
+  session_count: number;
+  sections: Record<string, unknown>;
+  status: string;
+  crisis_flagged: boolean;
+}
+
 export interface KeystrokeSignals {
   backspace_rate: number;
   typing_rhythm_std_dev_ms: number;

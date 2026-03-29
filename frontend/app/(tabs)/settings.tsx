@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Alert, Platform } from 'react-native';
 import { useTheme } from '../../src/theme';
+import { ApiService } from '../../src/services/api';
+import { useSession } from '../../src/context/SessionContext';
 
 function SettingsRow({
   label,
@@ -46,6 +48,32 @@ function SettingsRow({
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const { state } = useSession();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportBrief = async () => {
+    if (!state.session?.student_id) {
+      Alert.alert('No session yet', 'Start a session before exporting a counsellor brief.');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const brief = await ApiService.generateBrief(state.session.student_id);
+      const exportUrl = ApiService.resolveBriefExportUrl(brief.brief_id);
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.open(exportUrl, '_blank');
+      } else {
+        await Linking.openURL(exportUrl);
+      }
+    } catch (error) {
+      console.error('Brief export failed:', error);
+      Alert.alert('Export failed', 'Could not generate the counselor brief right now.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -78,6 +106,11 @@ export default function SettingsScreen() {
         >
           SUPPORT
         </Text>
+        <SettingsRow
+          label="Export Counselor Brief"
+          value={isExporting ? 'Generating...' : 'DOCX'}
+          onPress={isExporting ? undefined : handleExportBrief}
+        />
         <SettingsRow
           label="Crisis Resources"
           onPress={() => Linking.openURL('https://findahelpline.com')}

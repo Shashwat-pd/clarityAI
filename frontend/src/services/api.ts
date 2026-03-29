@@ -1,6 +1,6 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
-import { Session, VoiceTurnResponse, ChatMessageResponse, KeystrokeSignals } from '../types';
+import { Session, VoiceTurnResponse, ChatMessageResponse, KeystrokeSignals, BriefResponse } from '../types';
 
 const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000/api/v1';
 const API_BASE = API_URL.replace(/\/api\/v1$/, '');
@@ -66,6 +66,19 @@ export const ApiService = {
       keystroke_signals: keystrokeSignals,
     });
     return response.data;
+  },
+
+  // Brief Endpoints
+  async generateBrief(studentId: string, daysBack: number = 30): Promise<BriefResponse> {
+    const response = await api.post<BriefResponse>('/briefs/generate', {
+      student_id: studentId,
+      days_back: daysBack,
+    });
+    return response.data;
+  },
+
+  resolveBriefExportUrl(briefId: string): string {
+    return `${API_URL}/briefs/${briefId}/export`;
   },
 
   // Health Check
