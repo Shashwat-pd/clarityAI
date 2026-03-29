@@ -132,16 +132,52 @@ class BriefService:
             return {"avg_clarity": None, "trend": "insufficient data"}
         scores = [s.clarity_score for s in signals]
         avg = sum(scores) / len(scores)
+        tense_observations = [
+            s.raw_signals.get("explainable_signals", {}).get("tense", {})
+            for s in signals
+            if getattr(s, "raw_signals", None)
+        ]
         if len(scores) >= 2:
             first_half = scores[: len(scores) // 2]
             second_half = scores[len(scores) // 2 :]
             trend = "improving" if sum(second_half) / len(second_half) > sum(first_half) / len(first_half) else "declining"
         else:
             trend = "stable"
+        future_absent_count = sum(1 for obs in tense_observations if obs.get("future_absent"))
+        future_present_count = sum(1 for obs in tense_observations if obs.get("future_ratio", 0) >= 0.25)
+        rumination_observations = [
+            s.raw_signals.get("explainable_signals", {}).get("rumination", {})
+            for s in signals
+            if getattr(s, "raw_signals", None)
+        ]
+        valence_observations = [
+            s.raw_signals.get("explainable_signals", {}).get("valence", {})
+            for s in signals
+            if getattr(s, "raw_signals", None)
+        ]
+        repeated_theme_count = sum(1 for obs in rumination_observations if obs.get("repeated_turn_count", 0) >= 1)
+        negative_valence_count = sum(1 for obs in valence_observations if obs.get("valence_balance", 0) > 0)
         return {
             "avg_clarity": round(avg, 3),
             "min_clarity": round(min(scores), 3),
             "max_clarity": round(max(scores), 3),
             "total_readings": len(scores),
             "trend": trend,
+            "temporal_language_observation": (
+                "Future-oriented language was limited across much of the period."
+                if tense_observations and future_absent_count >= max(1, len(tense_observations) // 2)
+                else "Future-oriented language appeared in parts of the period."
+                if future_present_count
+                else "Insufficient temporal-language signal captured."
+            ),
+            "rumination_observation": (
+                "The student returned to similar concerns across multiple turns, which may reflect difficulty moving past a core worry."
+                if repeated_theme_count >= max(1, len(rumination_observations) // 3)
+                else "Limited cross-turn repetition was observed."
+            ),
+            "valence_observation": (
+                "Negative emotional language outweighed positive language in several turns."
+                if negative_valence_count >= max(1, len(valence_observations) // 3)
+                else "Emotional language appeared mixed or relatively balanced."
+            ),
         }

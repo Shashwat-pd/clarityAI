@@ -8,6 +8,16 @@ CRISIS_PATTERNS = [
     re.compile(r"\b(self harm|hurting myself)\b", re.IGNORECASE),
 ]
 
+SIGNAL_REGISTRY = {
+    "catastrophising": 0.25,
+    "rumination": 0.20,
+    "avoidance": 0.20,
+    "temporal_collapse": 0.15,
+    "negative_valence": 0.10,
+    "cognitive_narrowing": 0.10,
+    "self_deprecation": 0.10,
+}
+
 
 class CognitiveEngine:
     def __init__(self, signal_repo: SignalRepository):
@@ -34,18 +44,19 @@ class CognitiveEngine:
         smoothed_score = sum(all_scores) / len(all_scores)
 
         mode = self._score_to_mode(smoothed_score)
-        await self.signal_repo.save_score(session_id, smoothed_score, mode.value)
+        await self.signal_repo.save_score(
+            session_id,
+            smoothed_score,
+            mode.value,
+            raw_signals=self._build_raw_signal_payload(linguistic_signals, keystroke_signals, session_metadata or {}),
+        )
 
         return ClarityResult(score=round(smoothed_score, 3), mode=mode)
 
     def _score_linguistic(self, signals: LinguisticSignals) -> float:
-        distress = (
-            signals.catastrophising * 0.25
-            + signals.rumination * 0.20
-            + signals.avoidance * 0.20
-            + signals.temporal_collapse * 0.15
-            + signals.cognitive_narrowing * 0.10
-            + signals.self_deprecation * 0.10
+        distress = sum(
+            score * SIGNAL_REGISTRY.get(signal_name, 0.0)
+            for signal_name, score in self._extract_indicator_scores(signals).items()
         )
         return max(0.0, 1.0 - distress)
 
@@ -79,6 +90,32 @@ class CognitiveEngine:
             return ClarityMode.STRUCTURING
         else:
             return ClarityMode.GUIDANCE
+
+    def _extract_indicator_scores(self, signals: LinguisticSignals) -> dict[str, float]:
+        indicator_scores = {
+            "catastrophising": signals.catastrophising,
+            "rumination": signals.rumination,
+            "avoidance": signals.avoidance,
+            "temporal_collapse": signals.temporal_collapse,
+            "cognitive_narrowing": signals.cognitive_narrowing,
+            "self_deprecation": signals.self_deprecation,
+        }
+        indicator_scores.update(signals.indicator_scores)
+        return indicator_scores
+
+    def _build_raw_signal_payload(
+        self,
+        signals: LinguisticSignals,
+        keystroke_signals: dict | None,
+        session_metadata: dict,
+    ) -> dict:
+        return {
+            "indicator_scores": self._extract_indicator_scores(signals),
+            "explainable_signals": signals.explainable_signals.model_dump(),
+            "keystroke_signals": keystroke_signals or {},
+            "session_metadata": session_metadata,
+            "summary": signals.summary,
+        }
 
     @staticmethod
     def detect_crisis(text: str) -> bool:

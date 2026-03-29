@@ -2,7 +2,15 @@ import json
 import logging
 
 from app.integrations.gemini_client import GeminiClient
-from app.models.schemas.common import LinguisticSignals
+from app.models.schemas.common import ExplainableSignals, LinguisticSignals
+from app.services.signal_extractors import (
+    extract_rumination_features,
+    extract_tense_features,
+    extract_valence_features,
+    score_negative_valence,
+    score_rumination,
+    score_temporal_collapse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +38,30 @@ class LinguisticClassifier:
     def __init__(self, gemini: GeminiClient):
         self.gemini = gemini
 
-    async def classify(self, message: str) -> LinguisticSignals:
+    async def classify(self, message: str, prior_user_messages: list[str] | None = None) -> LinguisticSignals:
+        tense_features = extract_tense_features(message)
+        rumination_features = extract_rumination_features(message, prior_user_messages)
+        valence_features = extract_valence_features(message)
+        temporal_collapse = score_temporal_collapse(message, tense_features)
+        rumination_score = score_rumination(rumination_features)
+        negative_valence = score_negative_valence(valence_features)
+
         if len(message.strip()) < 3:
-            return LinguisticSignals.empty()
+            return LinguisticSignals(
+                temporal_collapse=temporal_collapse,
+                rumination=rumination_score,
+                indicator_scores={
+                    "temporal_collapse": temporal_collapse,
+                    "rumination": rumination_score,
+                    "negative_valence": negative_valence,
+                },
+                explainable_signals=ExplainableSignals(
+                    tense=tense_features,
+                    rumination=rumination_features,
+                    valence=valence_features,
+                ),
+                summary=tense_features.explanation,
+            )
 
         try:
             response = await self.gemini.classify(CLASSIFIER_PROMPT.format(message=message))
@@ -44,7 +73,39 @@ class LinguisticClassifier:
                     cleaned = cleaned[:-3]
                 cleaned = cleaned.strip()
             data = json.loads(cleaned)
-            return LinguisticSignals(**data)
+            return LinguisticSignals(
+                catastrophising=float(data.get("catastrophising", 0.0)),
+                rumination=rumination_score,
+                avoidance=float(data.get("avoidance", 0.0)),
+                temporal_collapse=temporal_collapse,
+                cognitive_narrowing=float(data.get("cognitive_narrowing", 0.0)),
+                self_deprecation=float(data.get("self_deprecation", 0.0)),
+                summary=data.get("summary", rumination_features.explanation or tense_features.explanation),
+                indicator_scores={
+                    "temporal_collapse": temporal_collapse,
+                    "rumination": rumination_score,
+                    "negative_valence": negative_valence,
+                },
+                explainable_signals=ExplainableSignals(
+                    tense=tense_features,
+                    rumination=rumination_features,
+                    valence=valence_features,
+                ),
+            )
         except Exception as e:
             logger.warning(f"Linguistic classification failed: {e}")
-            return LinguisticSignals.empty()
+            return LinguisticSignals(
+                temporal_collapse=temporal_collapse,
+                rumination=rumination_score,
+                indicator_scores={
+                    "temporal_collapse": temporal_collapse,
+                    "rumination": rumination_score,
+                    "negative_valence": negative_valence,
+                },
+                explainable_signals=ExplainableSignals(
+                    tense=tense_features,
+                    rumination=rumination_features,
+                    valence=valence_features,
+                ),
+                summary=rumination_features.explanation or tense_features.explanation,
+            )

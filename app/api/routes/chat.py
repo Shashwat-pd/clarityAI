@@ -36,7 +36,8 @@ async def send_message(
         raise HTTPException(status_code=404, detail="Session not found")
 
     history = await message_repo.get_recent(sid, limit=settings.MAX_SESSION_HISTORY_MESSAGES)
-    linguistic_signals = await classifier.classify(request.message)
+    prior_user_messages = [item["content"] for item in history if item.get("role") == "user"]
+    linguistic_signals = await classifier.classify(request.message, prior_user_messages=prior_user_messages)
 
     keystroke_dict = request.keystroke_signals.model_dump() if request.keystroke_signals else None
     clarity_result = await cognitive.compute(
@@ -75,4 +76,6 @@ async def send_message(
         clarity_score=clarity_result.score,
         crisis_flag=crisis,
         linguistic_signals=linguistic_signals.model_dump(),
+        indicator_scores=linguistic_signals.indicator_scores,
+        explainable_signals=linguistic_signals.explainable_signals,
     )

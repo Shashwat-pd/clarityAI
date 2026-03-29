@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.models.schemas.common import ClarityMode, KeystrokeSignals
+from app.models.schemas.common import ClarityMode, ExplainableSignals, KeystrokeSignals
 
 
 class ChatMessageRequest(BaseModel):
@@ -16,3 +16,5 @@ class ChatMessageResponse(BaseModel):
     clarity_score: float
     crisis_flag: bool = False
     linguistic_signals: dict
+    indicator_scores: dict[str, float]
+    explainable_signals: ExplainableSignals

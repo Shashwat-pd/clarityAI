@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react';
-import { ClarityMode, LumiState, Session, Message, KeystrokeSignals } from '../types';
+import { ClarityMode, LumiState, Session, Message, KeystrokeSignals, ExplainableSignals } from '../types';
 import { ApiService } from '../services/api';
 
 interface SessionState {
@@ -17,6 +17,8 @@ interface SessionState {
   error: string | null;
   activeAudioUrl: string | null;
   activeAudioBytes: string | null;
+  indicatorScores: Record<string, number>;
+  explainableSignals: ExplainableSignals | null;
 }
 
 type Action =
@@ -31,6 +33,7 @@ type Action =
   | { type: 'SET_AUDIO_AMPLITUDE'; amplitude: number }
   | { type: 'SET_RECORDING'; recording: boolean }
   | { type: 'SET_AUDIO_SOURCE'; url: string | null; bytes: string | null }
+  | { type: 'UPDATE_SIGNAL_INSIGHTS'; indicatorScores: Record<string, number>; explainableSignals: ExplainableSignals }
   | { type: 'CLEAR_SESSION' };
 
 const initialState: SessionState = {
@@ -48,6 +51,8 @@ const initialState: SessionState = {
   error: null,
   activeAudioUrl: null,
   activeAudioBytes: null,
+  indicatorScores: {},
+  explainableSignals: null,
 };
 
 function sessionReducer(state: SessionState, action: Action): SessionState {
@@ -101,6 +106,12 @@ function sessionReducer(state: SessionState, action: Action): SessionState {
       return { ...state, isRecording: action.recording };
     case 'SET_AUDIO_SOURCE':
       return { ...state, activeAudioUrl: action.url, activeAudioBytes: action.bytes };
+    case 'UPDATE_SIGNAL_INSIGHTS':
+      return {
+        ...state,
+        indicatorScores: action.indicatorScores,
+        explainableSignals: action.explainableSignals,
+      };
     case 'CLEAR_SESSION':
       return initialState;
     default:
@@ -161,6 +172,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         },
       });
       dispatch({ type: 'UPDATE_CLARITY', mode: response.clarity_mode, score: response.clarity_score });
+      dispatch({
+        type: 'UPDATE_SIGNAL_INSIGHTS',
+        indicatorScores: response.indicator_scores,
+        explainableSignals: response.explainable_signals,
+      });
       dispatch({ type: 'SET_CRISIS', flag: response.crisis_flag });
 
       if (!response.crisis_flag) {
@@ -195,13 +211,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       dispatch({
         type: 'ADD_MESSAGE',
         message: {
-          id: response.message_id,
+          id: response.turn_id,
           role: 'assistant',
-          content: response.ai_response,
+          content: response.ai_message,
           timestamp: new Date().toISOString(),
         },
       });
       dispatch({ type: 'UPDATE_CLARITY', mode: response.clarity_mode, score: response.clarity_score });
+      dispatch({
+        type: 'UPDATE_SIGNAL_INSIGHTS',
+        indicatorScores: response.indicator_scores,
+        explainableSignals: response.explainable_signals,
+      });
       dispatch({ type: 'SET_CRISIS', flag: response.crisis_flag });
 
       if (!response.crisis_flag) {

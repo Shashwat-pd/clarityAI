@@ -14,6 +14,7 @@ from app.repositories.message_repo import MessageRepository
 from app.repositories.session_repo import SessionRepository
 from app.repositories.signal_repo import SignalRepository
 from app.services.brief_service import BriefService
+from app.services.docx_service import DOCXService
 from app.services.pdf_service import PDFService
 
 router = APIRouter(prefix="/briefs", tags=["briefs"])
@@ -95,4 +96,24 @@ async def preview_brief(
         session_count=brief.session_count or 0,
         sections=brief.content,
         crisis_flagged=brief.crisis_flagged,
+    )
+
+
+@router.get("/{brief_id}/export")
+async def export_brief_docx(
+    brief_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Brief).where(Brief.id == uuid.UUID(brief_id)))
+    brief = result.scalar_one_or_none()
+    if not brief:
+        raise HTTPException(status_code=404, detail="Brief not found")
+
+    docx_service = DOCXService()
+    docx_bytes = docx_service.render(brief)
+
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="counselor_brief.docx"'},
     )

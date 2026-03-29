@@ -71,9 +71,13 @@ async def voice_websocket_handler(websocket: WebSocket, session_id: str, db: Asy
                 # Load session
                 session = await session_repo.get(sid)
                 history = await message_repo.get_recent(sid, limit=20)
+                prior_user_messages = [item["content"] for item in history if item.get("role") == "user"]
 
                 # Linguistic signals
-                ling_signals = await classifier.classify(transcript)
+                ling_signals = await classifier.classify(
+                    transcript,
+                    prior_user_messages=prior_user_messages,
+                )
 
                 # Clarity
                 clarity_result = await cognitive.compute(
@@ -103,6 +107,8 @@ async def voice_websocket_handler(websocket: WebSocket, session_id: str, db: Asy
                     "clarity_mode": clarity_result.mode.value,
                     "clarity_score": clarity_result.score,
                     "crisis_flag": crisis,
+                    "indicator_scores": ling_signals.indicator_scores,
+                    "explainable_signals": ling_signals.explainable_signals.model_dump(),
                 })
 
                 # TTS

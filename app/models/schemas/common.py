@@ -1,12 +1,45 @@
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ClarityMode(str, Enum):
     GROUNDING = "grounding"
     STRUCTURING = "structuring"
     GUIDANCE = "guidance"
+
+
+class TenseFeatures(BaseModel):
+    past_count: int = 0
+    present_count: int = 0
+    future_count: int = 0
+    past_ratio: float = 0.0
+    present_ratio: float = 0.0
+    future_ratio: float = 0.0
+    future_absent: bool = True
+    explanation: str = ""
+
+
+class RuminationFeatures(BaseModel):
+    repeated_phrases: list[str] = Field(default_factory=list)
+    repetition_ratio: float = 0.0
+    repeated_turn_count: int = 0
+    explanation: str = ""
+
+
+class ValenceFeatures(BaseModel):
+    negative_word_count: int = 0
+    positive_word_count: int = 0
+    negative_word_ratio: float = 0.0
+    positive_word_ratio: float = 0.0
+    valence_balance: float = 0.0
+    explanation: str = ""
+
+
+class ExplainableSignals(BaseModel):
+    tense: TenseFeatures = Field(default_factory=TenseFeatures)
+    rumination: RuminationFeatures = Field(default_factory=RuminationFeatures)
+    valence: ValenceFeatures = Field(default_factory=ValenceFeatures)
 
 
 class LinguisticSignals(BaseModel):
@@ -17,6 +50,8 @@ class LinguisticSignals(BaseModel):
     cognitive_narrowing: float = 0.0
     self_deprecation: float = 0.0
     summary: str = ""
+    indicator_scores: dict[str, float] = Field(default_factory=dict)
+    explainable_signals: ExplainableSignals = Field(default_factory=ExplainableSignals)
 
     @classmethod
     def empty(cls) -> "LinguisticSignals":

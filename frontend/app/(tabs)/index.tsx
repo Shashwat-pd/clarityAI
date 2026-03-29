@@ -211,6 +211,46 @@ export default function VoiceScreen() {
       {/* Transcript Area — bottom ~50% */}
       <View style={styles.transcriptArea}>
         <TranscriptList messages={state.messages} />
+        {state.explainableSignals?.tense && (
+          <View style={[styles.debugPanel, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.debugTitle, { color: theme.colors.text }]}>
+              Temporal Signal Debug
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              Past {state.explainableSignals.tense.past_ratio.toFixed(2)} · Present {state.explainableSignals.tense.present_ratio.toFixed(2)} · Future {state.explainableSignals.tense.future_ratio.toFixed(2)}
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              Temporal collapse score {Number(state.indicatorScores.temporal_collapse || 0).toFixed(2)}
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              {state.explainableSignals.tense.explanation}
+            </Text>
+            <Text style={[styles.debugTitle, { color: theme.colors.text, marginTop: 8 }]}>
+              Rumination Debug
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              Rumination score {Number(state.indicatorScores.rumination || 0).toFixed(2)} · repeated turns {state.explainableSignals.rumination.repeated_turn_count}
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              Phrases: {state.explainableSignals.rumination.repeated_phrases.join(', ') || 'none'}
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              {state.explainableSignals.rumination.explanation}
+            </Text>
+            <Text style={[styles.debugTitle, { color: theme.colors.text, marginTop: 8 }]}>
+              Valence Debug
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              Negative valence score {Number(state.indicatorScores.negative_valence || 0).toFixed(2)} · balance {state.explainableSignals.valence.valence_balance.toFixed(2)}
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              Neg {state.explainableSignals.valence.negative_word_ratio.toFixed(2)} · Pos {state.explainableSignals.valence.positive_word_ratio.toFixed(2)}
+            </Text>
+            <Text style={[styles.debugText, { color: theme.colors.textSecondary }]}>
+              {state.explainableSignals.valence.explanation}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Text Input — bottom, above tab bar */}
@@ -297,5 +337,20 @@ const styles = StyleSheet.create({
     height: 0,
     overflow: 'hidden',
     opacity: 0,
+  },
+  debugPanel: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 12,
+    gap: 4,
+  },
+  debugTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  debugText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
 });

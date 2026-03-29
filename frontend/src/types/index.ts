@@ -1,6 +1,39 @@
 export type ClarityMode = 'grounding' | 'structuring' | 'guidance';
 export type LumiState = 'idle' | 'listening' | 'processing' | 'speaking' | 'grounding' | 'crisis';
 
+export interface TenseFeatures {
+  past_count: number;
+  present_count: number;
+  future_count: number;
+  past_ratio: number;
+  present_ratio: number;
+  future_ratio: number;
+  future_absent: boolean;
+  explanation: string;
+}
+
+export interface RuminationFeatures {
+  repeated_phrases: string[];
+  repetition_ratio: number;
+  repeated_turn_count: number;
+  explanation: string;
+}
+
+export interface ValenceFeatures {
+  negative_word_count: number;
+  positive_word_count: number;
+  negative_word_ratio: number;
+  positive_word_ratio: number;
+  valence_balance: number;
+  explanation: string;
+}
+
+export interface ExplainableSignals {
+  tense: TenseFeatures;
+  rumination: RuminationFeatures;
+  valence: ValenceFeatures;
+}
+
 export interface Session {
   session_id: string;
   student_id: string;
@@ -28,15 +61,19 @@ export interface VoiceTurnResponse {
   clarity_score: number;
   clarity_mode: ClarityMode;
   crisis_flag: boolean;
+  indicator_scores: Record<string, number>;
+  explainable_signals: ExplainableSignals;
 }
 
 export interface ChatMessageResponse {
-  message_id: string;
-  session_id: string;
-  ai_response: string;
+  turn_id: string;
+  ai_message: string;
   clarity_score: number;
   clarity_mode: ClarityMode;
   crisis_flag: boolean;
+  linguistic_signals: Record<string, unknown>;
+  indicator_scores: Record<string, number>;
+  explainable_signals: ExplainableSignals;
 }
 
 export interface KeystrokeSignals {

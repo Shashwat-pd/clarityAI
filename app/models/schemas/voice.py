@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.models.schemas.common import ClarityMode
+from app.models.schemas.common import ClarityMode, ExplainableSignals
 
 
 class TranscribeResponse(BaseModel):
@@ -25,3 +25,5 @@ class VoiceTurnResponse(BaseModel):
     crisis_flag: bool = False
     audio_url: str | None = None
     processing_ms: dict
+    indicator_scores: dict[str, float]
+    explainable_signals: ExplainableSignals

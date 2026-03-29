@@ -3,7 +3,7 @@ import uuid
 
 from app.integrations.deepgram_client import DeepgramSTTClient
 from app.integrations.gemini_tts_client import GeminiTTSClient
-from app.models.schemas.common import LinguisticSignals
+from app.models.schemas.common import ExplainableSignals, LinguisticSignals
 from app.repositories.message_repo import MessageRepository
 from app.repositories.session_repo import SessionRepository
 from app.services.cognitive_engine import CognitiveEngine
@@ -23,6 +23,8 @@ class VoiceTurnResult:
         crisis_flag: bool,
         turn_id: str,
         processing_ms: dict,
+        indicator_scores: dict[str, float],
+        explainable_signals: ExplainableSignals,
     ):
         self.transcript = transcript
         self.ai_text = ai_text
@@ -32,6 +34,8 @@ class VoiceTurnResult:
         self.crisis_flag = crisis_flag
         self.turn_id = turn_id
         self.processing_ms = processing_ms
+        self.indicator_scores = indicator_scores
+        self.explainable_signals = explainable_signals
 
 
 class VoiceService:
@@ -72,9 +76,13 @@ class VoiceService:
         # 2. Load session state + message history
         session = await self.session_repo.get(sid)
         history = await self.message_repo.get_recent(sid, limit=20)
+        prior_user_messages = [item["content"] for item in history if item.get("role") == "user"]
 
         # 3. Linguistic signals
-        linguistic_signals = await self.linguistic_classifier.classify(transcript)
+        linguistic_signals = await self.linguistic_classifier.classify(
+            transcript,
+            prior_user_messages=prior_user_messages,
+        )
 
         # 4. Clarity score
         clarity_result = await self.cognitive_engine.compute(
@@ -131,4 +139,6 @@ class VoiceService:
             crisis_flag=crisis,
             turn_id=str(user_msg.id),
             processing_ms={"stt": stt_ms, "llm": llm_ms, "tts": tts_ms, "total": total_ms},
+            indicator_scores=linguistic_signals.indicator_scores,
+            explainable_signals=linguistic_signals.explainable_signals,
         )

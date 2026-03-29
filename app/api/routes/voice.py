@@ -107,6 +107,8 @@ async def voice_turn(
         clarity_score=result.clarity_score,
         crisis_flag=result.crisis_flag,
         processing_ms=result.processing_ms,
+        indicator_scores=result.indicator_scores,
+        explainable_signals=result.explainable_signals,
     )
 
     if response_mode == "url":
