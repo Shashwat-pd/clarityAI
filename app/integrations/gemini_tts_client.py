@@ -1,6 +1,10 @@
+import base64
+import logging
+
 from google import genai
 from google.genai import types
 
+logger = logging.getLogger(__name__)
 
 VOICE_BY_MODE = {
     "grounding": {"voice_name": "Aoede", "style_hint": "Speak very slowly, softly, and warmly. Be calm and unhurried."},
@@ -31,4 +35,16 @@ class GeminiTTSClient:
                 ),
             ),
         )
-        return response.candidates[0].content.parts[0].inline_data.data
+        inline_data = response.candidates[0].content.parts[0].inline_data
+        raw = inline_data.data
+        logger.info("TTS mime_type=%s data_type=%s data_len=%s", inline_data.mime_type, type(raw).__name__, len(raw) if raw else 0)
+
+        # google-genai 1.5.0 returns base64-encoded str for TTS, not raw bytes
+        if isinstance(raw, str):
+            logger.info("TTS data is base64 string, decoding")
+            return base64.b64decode(raw)
+        if isinstance(raw, bytes) and raw[:16].isascii() and not raw[:2] in (b'\xff\xfb', b'\x00\x00', b'RI'):
+            # Looks like base64-encoded bytes rather than actual PCM/audio
+            logger.info("TTS data looks like base64 bytes, decoding")
+            return base64.b64decode(raw)
+        return raw
